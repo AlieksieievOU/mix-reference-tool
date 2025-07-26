@@ -1,56 +1,68 @@
-import React, {type ChangeEvent, useState } from 'react';
+import React, { type ChangeEvent } from 'react';
+import { useLocalAudioPlayer } from '../hooks/useLocalAudioPlayer';
 
 interface AudioUploaderProps {
     audioContext: AudioContext | null;
-    onAudioNodeReady: (node: AudioBufferSourceNode) => void;
+    onAudioNodeReady: (node: AudioNode | null) => void;
+    isPlaying: boolean;
+    isMuted: boolean;
+    isActiveSource: boolean;
 }
 
-export const AudioUploader: React.FC<AudioUploaderProps> = ({ audioContext, onAudioNodeReady }) => {
-    const [fileName, setFileName] = useState('');
-    const [error, setError] = useState('');
+export const AudioUploader: React.FC<AudioUploaderProps> = ({ audioContext, onAudioNodeReady, isPlaying, isMuted, isActiveSource }) => {
+    const {
+        fileName,
+        error,
+        handleFileChange,
+        clearAudio,
+    } = useLocalAudioPlayer(audioContext, onAudioNodeReady, isPlaying, isMuted, isActiveSource);
 
-    const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-        const files = event.target.files;
-        if (!files || files.length === 0) return;
-        if (!audioContext) {
-            setError('Audio engine not ready. Please click anywhere on the page first.');
-            return;
+    const onFileSelected = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            handleFileChange(file);
         }
-
-        const file = files[0];
-        setFileName(file.name);
-        setError('');
-
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-            const sourceNode = audioContext.createBufferSource();
-            sourceNode.buffer = audioBuffer;
-            sourceNode.connect(audioContext.destination); // Connect to output to hear it
-            // Do not start playing here, let the user control it.
-
-            onAudioNodeReady(sourceNode);
-        } catch (e) {
-            console.error('Error decoding audio file:', e);
-            setError('Failed to decode audio file. Please try a different format (e.g., WAV, MP3).');
-        }
+        event.target.value = '';
     };
 
     return (
-        <div className="audio-uploader">
-            <label htmlFor="audio-upload" className="upload-button">
-                {fileName || 'Select File'}
-            </label>
-            <input
-                id="audio-upload"
-                type="file"
-                accept="audio/*"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-                data-testid="audio-uploader-input"
-            />
-            {error && <p className="error-message">{error}</p>}
+        <div className="space-y-4">
+            <div className="flex flex-col space-y-2">
+                <label
+                    htmlFor="audio-upload"
+                    className="bg-spotify-green text-spotify-black px-4 py-2 rounded cursor-pointer font-semibold text-center hover:bg-opacity-80 transition-colors"
+                >
+                    {fileName || 'Choose Audio File'}
+                </label>
+                <input
+                    id="audio-upload"
+                    type="file"
+                    accept="audio/*"
+                    onChange={onFileSelected}
+                    className="hidden"
+                    data-testid="audio-uploader-input"
+                />
+            </div>
+
+            {fileName && (
+                <div className="bg-spotify-grey p-3 rounded flex justify-between items-center">
+                    <p className="text-spotify-white text-sm font-medium truncate" title={fileName}>
+                        {fileName}
+                    </p>
+                    <button
+                        onClick={clearAudio}
+                        className="bg-red-600 text-white px-3 py-1 rounded text-sm font-semibold hover:bg-red-700"
+                    >
+                        Remove
+                    </button>
+                </div>
+            )}
+
+            {error && (
+                <div className="bg-red-600 text-white p-3 rounded">
+                    <p className="text-sm">{error}</p>
+                </div>
+            )}
         </div>
     );
 };

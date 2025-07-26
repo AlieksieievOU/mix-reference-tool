@@ -6,13 +6,11 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 export default defineConfig({
   plugins: [
     react(),
-    // This plugin automatically generates a self-signed SSL certificate
     basicSsl()
   ],
   server: {
-    // This is the key part that enables HTTPS
+    host: true,
     https: true,
-    // I'm setting the port to 5175 to match your backend's .env file
     port: 5175,
   },
 })
