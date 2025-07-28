@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 
 interface UseSpectrumDrawerProps {
-    canvasRef: React.RefObject<HTMLCanvasElement>;
+    canvasRef: React.RefObject<HTMLCanvasElement | null>;
     analyzerNode: AnalyserNode | null;
     isAnalyzing: boolean;
     color?: string;
@@ -28,7 +28,7 @@ export const useSpectrumDrawer = ({
                                       color = '#1DB954',
                                       title = 'Spectrum'
                                   }: UseSpectrumDrawerProps) => {
-    const animationFrameRef = useRef<number>();
+    const animationFrameRef = useRef<number | null>(null);
 
     const draw = useCallback(() => {
         if (!analyzerNode || !canvasRef.current || !analyzerNode.context) return;
