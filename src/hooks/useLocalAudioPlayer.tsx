@@ -49,7 +49,9 @@ export const useLocalAudioPlayer = (
         if (sourceNodeRef.current) {
             try {
                 sourceNodeRef.current.disconnect();
-            } catch (e) { /* Already disconnected */ }
+            } catch (error) { /* Already disconnected */
+                console.log(error)
+            }
         }
         setFileName('');
         setError('');
@@ -71,8 +73,7 @@ export const useLocalAudioPlayer = (
 
         try {
             const audio = new Audio();
-            const url = URL.createObjectURL(file);
-            audio.src = url;
+            audio.src = URL.createObjectURL(file);
             audio.loop = true;
             audio.muted = isMuted; // Apply mute state on creation
 

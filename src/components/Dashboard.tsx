@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { AudioUploader } from './AudioUploader';
-import { SpotifySearch } from './SpotifyTrackSearch';
-import { FrequencyAnalyzer } from './FrequencyAnalyzerComponent';
-import { useSpotifyWebPlaybackSDK } from '../hooks/useSpotifyWebPlaybackSDK';
-import { useSpotifyAnalysis } from '../hooks/useSpotifyAnalysis';
-import { SpotifyAnalysisDisplay } from './SpotifyAnalysisDisplay';
-import type { Track } from '../types';
+import React, {useState, useEffect} from 'react';
+import {AudioUploader} from './AudioUploader';
+import {SpotifySearch} from './SpotifyTrackSearch';
+import {FrequencyAnalyzer} from './FrequencyAnalyzerComponent';
+import {useSpotifyWebPlaybackSDK} from '../hooks/useSpotifyWebPlaybackSDK';
+import {useSpotifyAnalysis} from '../hooks/useSpotifyAnalysis';
+import {SpotifyAnalysisDisplay} from './SpotifyAnalysisDisplay';
+import type {Track} from '../types';
 
 interface DashboardProps {
     token: string;
     onLogout?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
+export const Dashboard: React.FC<DashboardProps> = ({token, onLogout}) => {
     const [localAudioNode, setLocalAudioNode] = useState<AudioNode | null>(null);
     const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-    const { deviceId, isReady: isPlayerReady, error: playerError, currentState: spotifyPlayerState, player: spotifyPlayer } = useSpotifyWebPlaybackSDK({ token });
+    const {
+        deviceId,
+        isReady: isPlayerReady,
+        error: playerError,
+        currentState: spotifyPlayerState,
+        player: spotifyPlayer
+    } = useSpotifyWebPlaybackSDK({token});
 
     // --- Global State Management ---
     const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
@@ -24,7 +30,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
     const [activeAudioSource, setActiveAudioSource] = useState<'local' | 'spotify'>('local');
 
     // --- Use the analysis hook ---
-    const { features, loading: analysisLoading, error: analysisError } = useSpotifyAnalysis(selectedTrack, token);
+    const {features, loading: analysisLoading, error: analysisError} = useSpotifyAnalysis(selectedTrack, token);
 
     const toggleGlobalPlayback = () => setIsPlaying(prev => !prev);
 
@@ -41,11 +47,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
         }
     }, [isMuted, spotifyPlayer]);
 
-    const initializeAudioContext = () => {
-        if (!audioContext) {
-            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const initializeAudioContext = async (): Promise<boolean> => {
+        if (audioContext && audioContext.state !== 'closed') {
+            return true;
+        }
+
+        try {
+            // Check if AudioContext is supported
+            if (!window.AudioContext) {
+                console.error('AudioContext not supported in this browser');
+                return false;
+            }
+
+            const context = new AudioContext();
+
+            // Handle suspended state (requires user gesture)
+            if (context.state === 'suspended') {
+                try {
+                    await context.resume();
+                    console.log('AudioContext resumed after user gesture');
+                } catch (error) {
+                    console.error('Failed to resume AudioContext:', error);
+                    return false;
+                }
+            }
+
             setAudioContext(context);
             console.log('AudioContext initialized:', context.state);
+            return true;
+
+        } catch (error) {
+            console.error('Failed to initialize AudioContext:', error);
+            return false;
         }
     };
 
@@ -60,7 +93,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
         <div className="flex min-h-screen justify-center bg-spotify-black text-spotify-light-grey">
             {/* Left Ad Column */}
             <aside className="w-64 hidden xl:block p-4 pt-8">
-                <div className="h-full bg-spotify-dark-grey rounded-lg flex items-center justify-center text-center p-4">
+                <div
+                    className="h-full bg-spotify-dark-grey rounded-lg flex items-center justify-center text-center p-4">
                     <span className="text-spotify-light-grey">Your Ad Here</span>
                 </div>
             </aside>
@@ -71,7 +105,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                     <header className="mb-10 flex justify-between items-center">
                         <div>
                             <h1 className="text-4xl font-bold text-spotify-white">Mix Reference Tool</h1>
-                            <p className="text-spotify-light-grey mt-2">Compare your track's frequency spectrum with professional references</p>
+                            <p className="text-spotify-light-grey mt-2">Compare your track's frequency spectrum with
+                                professional references</p>
                         </div>
                         {onLogout && (
                             <button
@@ -84,15 +119,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                     </header>
 
                     {/* Status Indicators */}
-                    <div className="mb-6 bg-spotify-dark-grey p-3 rounded-lg flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6">
+                    <div
+                        className="mb-6 bg-spotify-dark-grey p-3 rounded-lg flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6">
                         <div className="flex items-center space-x-2">
-                            <div className={`w-3 h-3 rounded-full ${audioContext ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                            <div
+                                className={`w-3 h-3 rounded-full ${audioContext ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                             <span className="text-sm text-spotify-light-grey">
                                 Audio Engine: {audioContext ? `Ready (${audioContext.state})` : 'Click anywhere to initialize'}
                             </span>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <div className={`w-3 h-3 rounded-full ${isPlayerReady ? 'bg-green-500' : playerError ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
+                            <div
+                                className={`w-3 h-3 rounded-full ${isPlayerReady ? 'bg-green-500' : playerError ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
                             <span className="text-sm text-spotify-light-grey">
                                 Spotify Player: {playerError ? 'Error' : isPlayerReady ? 'Ready' : 'Initializing...'}
                             </span>
@@ -100,7 +138,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                     </div>
 
                     {playerError && (
-                        <div className="mb-6 bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg" role="alert">
+                        <div className="mb-6 bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg"
+                             role="alert">
                             <strong className="font-bold">Spotify Player Error: </strong>
                             <span className="block sm:inline">{playerError}</span>
                         </div>
@@ -153,7 +192,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
 
             {/* Right Ad Column */}
             <aside className="w-64 hidden xl:block p-4 pt-8">
-                <div className="h-full bg-spotify-dark-grey rounded-lg flex items-center justify-center text-center p-4">
+                <div
+                    className="h-full bg-spotify-dark-grey rounded-lg flex items-center justify-center text-center p-4">
                     <span className="text-spotify-light-grey">Your Ad Here</span>
                 </div>
             </aside>
